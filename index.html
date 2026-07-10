@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YotonBase 数据库管理系统</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f0f2f5; color: #333; min-height: 100vh; }
+.header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: #fff; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+.header h1 { font-size: 22px; font-weight: 600; letter-spacing: 2px; }
+.header h1 span { color: #e94560; }
+.history-bar { display: flex; gap: 10px; align-items: center; font-size: 14px; }
+.history-bar button { padding: 6px 16px; border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; background: rgba(255,255,255,0.1); color: #fff; cursor: pointer; font-size: 13px; transition: 0.2s; }
+.history-bar button:hover:not(:disabled) { background: rgba(255,255,255,0.25); }
+.history-bar button:disabled { opacity: 0.4; cursor: not-allowed; }
+.history-badge { background: #e94560; color: #fff; border-radius: 12px; padding: 2px 10px; font-size: 12px; font-weight: 600; }
+.main { display: flex; height: calc(100vh - 120px); margin: 16px; gap: 16px; }
+.sidebar { width: 240px; background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); display: flex; flex-direction: column; gap: 16px; }
+.sidebar h3 { font-size: 15px; color: #666; margin-bottom: 4px; }
+.table-list { list-style: none; flex: 1; overflow-y: auto; }
+.table-list li { padding: 10px 14px; border-radius: 8px; cursor: pointer; margin-bottom: 4px; transition: 0.15s; font-size: 14px; border: 1px solid transparent; }
+.table-list li:hover { background: #f5f5f5; }
+.table-list li.active { background: #e8f0fe; border-color: #4285f4; color: #1a73e8; font-weight: 600; }
+.table-list li .badge { float: right; background: #e0e0e0; border-radius: 10px; padding: 1px 8px; font-size: 11px; color: #666; }
+.create-table-form { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid #eee; }
+.create-table-form input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; outline: none; }
+.create-table-form input:focus { border-color: #4285f4; }
+.create-table-form button { padding: 8px; background: #4285f4; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; transition: 0.2s; }
+.create-table-form button:hover { background: #3367d6; }
+.sidebar .drop-btn { margin-top: 8px; padding: 8px; background: #fff; color: #e94560; border: 1px solid #e94560; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.sidebar .drop-btn:hover { background: #e94560; color: #fff; }
+.content { flex: 1; background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); display: flex; flex-direction: column; overflow: hidden; }
+.toolbar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+.toolbar-group { display: flex; gap: 6px; align-items: center; padding: 4px 8px; background: #f8f9fa; border-radius: 8px; }
+.toolbar-divider { width: 1px; height: 24px; background: #ddd; margin: 0 4px; }
+.toolbar button { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; white-space: nowrap; }
+.btn-add { background: #34a853; color: #fff; }
+.btn-add:hover { background: #2d9249; box-shadow: 0 2px 6px rgba(52,168,83,0.3); }
+.btn-search { background: #fbbc04; color: #333; }
+.btn-search:hover { background: #e8ae00; box-shadow: 0 2px 6px rgba(251,188,4,0.3); }
+.btn-export-csv { background: #4285f4; color: #fff; }
+.btn-export-csv:hover { background: #3367d6; box-shadow: 0 2px 6px rgba(66,133,244,0.3); }
+.btn-export-json { background: #8b5cf6; color: #fff; }
+.btn-export-json:hover { background: #7c3aed; box-shadow: 0 2px 6px rgba(139,92,246,0.3); }
+.btn-refresh { background: #fff; color: #555; border: 1px solid #ddd; }
+.btn-refresh:hover { background: #f0f0f0; border-color: #bbb; }
+.btn-clear { background: #fff; color: #d93025; border: 1px solid #fce8e6; }
+.btn-clear:hover { background: #fce8e6; }
+.search-input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; width: 110px; outline: none; transition: border-color 0.2s, width 0.2s; }
+.search-input:focus { border-color: #4285f4; width: 140px; box-shadow: 0 0 0 2px rgba(66,133,244,0.1); }
+.btn-guide { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; border: none; font-weight: 600; }
+.btn-guide:hover { background: linear-gradient(135deg, #5a6fd6 0%, #6a4196 100%); box-shadow: 0 2px 8px rgba(102,126,234,0.4); }
+.btn-history { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; padding: 6px 14px; cursor: pointer; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px; transition: 0.2s; }
+.btn-history:hover { background: rgba(255,255,255,0.25); border-color: rgba(255,255,255,0.5); }
+.btn-history .history-badge { margin-left: 2px; }
+/* 操作历史弹窗样式 */
+.history-modal { max-width: 520px !important; max-height: 70vh; }
+.history-modal h3 { margin-bottom: 16px; }
+.history-section { margin-bottom: 16px; }
+.history-section h4 { font-size: 14px; color: #555; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #eee; }
+.history-list { list-style: none; padding: 0; margin: 0; }
+.history-list li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; margin-bottom: 4px; font-size: 13px; transition: 0.15s; }
+.history-list li:hover { background: #f5f7fa; }
+.history-step { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; }
+.history-step.create { background: #34a853; }
+.history-step.drop { background: #e94560; }
+.history-step.insert { background: #4285f4; }
+.history-step.delete { background: #d93025; }
+.history-step.update { background: #fbbc04; color: #333; }
+.history-step.restore { background: #8b5cf6; }
+.history-step.other { background: #999; }
+.history-desc { flex: 1; color: #333; }
+.history-type { font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 500; flex-shrink: 0; }
+.history-type.create { background: #e6f4ea; color: #1e7e34; }
+.history-type.drop { background: #fce8e6; color: #c5221f; }
+.history-type.insert { background: #e8f0fe; color: #1a73e8; }
+.history-type.delete { background: #fce8e6; color: #c5221f; }
+.history-type.update { background: #fef7e0; color: #8a6d14; }
+.history-type.restore { background: #f3e8fd; color: #6d28d9; }
+.history-type.other { background: #f5f5f5; color: #666; }
+.history-empty { text-align: center; color: #bbb; font-size: 13px; padding: 16px 0; }
+/* 使用指南弹窗特殊样式 */
+.guide-modal { max-width: 600px !important; max-height: 75vh; line-height: 1.8; }
+.guide-modal h4 { color: #1a1a2e; margin: 16px 0 8px; font-size: 15px; padding-bottom: 4px; border-bottom: 2px solid #4285f4; display: inline-block; }
+.guide-modal p { color: #555; font-size: 13px; margin: 4px 0; }
+.guide-modal ul { margin: 6px 0; padding-left: 20px; }
+.guide-modal ul li { color: #555; font-size: 13px; margin: 3px 0; }
+.guide-modal .highlight { background: #e8f0fe; color: #1a73e8; padding: 1px 6px; border-radius: 3px; font-size: 12px; font-weight: 500; }
+.guide-modal .note { background: #fff9e6; border-left: 3px solid #fbbc04; padding: 8px 12px; margin: 10px 0; border-radius: 0 6px 6px 0; font-size: 12px; color: #8a6d14; }
+.placeholder { flex: 1; display: flex; align-items: center; justify-content: center; color: #999; font-size: 16px; }
+.table-wrapper { flex: 1; overflow: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+thead th { background: #f8f9fa; padding: 10px 14px; text-align: left; font-weight: 600; color: #555; border-bottom: 2px solid #e0e0e0; position: sticky; top: 0; z-index: 1; }
+tbody td { padding: 10px 14px; border-bottom: 1px solid #f0f0f0; }
+tbody tr:hover { background: #f8f9ff; }
+.action-cell { display: flex; gap: 8px; }
+.action-cell button { padding: 4px 12px; border-radius: 4px; border: none; cursor: pointer; font-size: 12px; }
+.btn-edit { background: #e8f0fe; color: #1a73e8; }
+.btn-edit:hover { background: #d2e3fc; }
+.btn-del { background: #fce8e6; color: #d93025; }
+.btn-del:hover { background: #f8d7da; }
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: center; justify-content: center; }
+.modal-overlay.show { display: flex; }
+.modal { background: #fff; border-radius: 14px; padding: 28px; width: 440px; max-height: 80vh; overflow-y: auto; box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
+.modal h3 { margin-bottom: 20px; font-size: 18px; color: #1a1a2e; }
+.modal .form-group { margin-bottom: 14px; }
+.modal label { display: block; font-size: 13px; color: #666; margin-bottom: 4px; font-weight: 500; }
+.modal input { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; outline: none; }
+.modal input:focus { border-color: #4285f4; }
+.modal input[readonly] { background: #f5f5f5; color: #888; }
+.modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.modal-buttons button { padding: 8px 22px; border-radius: 6px; border: none; cursor: pointer; font-size: 14px; }
+.btn-confirm { background: #4285f4; color: #fff; }
+.btn-confirm:hover { background: #3367d6; }
+.btn-cancel { background: #f5f5f5; color: #666; }
+.btn-cancel:hover { background: #e8e8e8; }
+.toast { position: fixed; top: 20px; right: 20px; padding: 12px 24px; border-radius: 8px; color: #fff; font-size: 14px; z-index: 200; opacity: 0; transform: translateY(-10px); transition: 0.3s; pointer-events: none; }
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.success { background: #34a853; }
+.toast.error { background: #d93025; }
+.toast.info { background: #4285f4; }
+.footer { background: #fff; padding: 10px 24px; margin: 0 16px 16px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); font-size: 12px; color: #888; display: flex; justify-content: space-between; }
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; color: #bbb; font-size: 15px; gap: 8px; }
+.empty-state .icon { font-size: 48px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1><span>Yoton</span>Base 数据库管理系统</h1>
+  <div class="history-bar">
+    <button class="btn-guide" id="btnGuide">📖 使用指南</button>
+    <button class="btn-history" id="btnHistoryLog" style="margin-left:8px">📜 操作历史 <span class="history-badge" id="undoCount">0</span></button>
+    <button id="btnUndo" disabled>↩ 撤销</button>
+    <button id="btnRedo" disabled>↪ 重做</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="sidebar">
+    <h3>📋 数据表</h3>
+    <ul class="table-list" id="tableList"><li style="color:#bbb">暂无表，请创建</li></ul>
+    <div class="create-table-form">
+      <input id="newTableName" placeholder="表名（英文）" />
+      <input id="newTableCols" placeholder="列名，逗号分隔（第一列为主键）" />
+      <button id="btnCreateTable">+ 创建新表</button>
+    </div>
+    <button class="drop-btn" id="btnDropTable" style="display:none">🗑 删除当前表</button>
+  </div>
+
+  <div class="content" id="contentArea">
+    <div class="placeholder">👈 请先在左侧选择或创建一个数据表</div>
+  </div>
+</div>
+
+<div class="footer">
+  <span id="statusDb">数据库：YotonBase</span>
+  <span id="statusRows">未选择表</span>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modal">
+    <h3 id="modalTitle">新增记录</h3>
+    <div id="modalFields"></div>
+    <div class="modal-buttons">
+      <button class="btn-cancel" id="btnCancel">取消</button>
+      <button class="btn-confirm" id="btnConfirm">确认</button>
+    </div>
+  </div>
+</div>
+
+<!-- 使用指南弹窗 -->
+<div class="modal-overlay" id="guideOverlay">
+  <div class="modal guide-modal" id="guideModal">
+    <h3>📖 YotonBase 使用指南</h3>
+    <h4>一、创建数据表</h4>
+    <p>在左侧面板输入<span class="highlight">表名</span>（建议英文）和<span class="highlight">列名</span>（逗号分隔），点击"创建新表"。<b>第一列自动设为主键</b>，主键值不可重复。</p>
+    <p>示例：表名 <code>students</code>，列名 <code>学号,姓名,年龄,专业</code></p>
+
+    <h4>二、管理数据记录</h4>
+    <ul>
+      <li><b>新增记录：</b>选中表 → 点击"＋ 新增记录" → 填写表单 → 确认。主键字段必填。</li>
+      <li><b>编辑记录：</b>在表格行右侧点击"编辑"按钮，修改后可更新。主键不可修改。</li>
+      <li><b>删除记录：</b>点击行右侧"删除"按钮，确认后删除。该操作可撤销。</li>
+    </ul>
+
+    <h4>三、搜索与筛选</h4>
+    <p>在工具栏<span class="highlight">列名</span>输入框中填入要搜索的字段名，在<span class="highlight">搜索值</span>中填入匹配内容，点击"🔍 搜索"。点击"✕ 清除"恢复全表显示。</p>
+
+    <h4>四、数据导出</h4>
+    <ul>
+      <li><b>导出 CSV：</b>点击"📥 导出 CSV"，文件保存到 <code>server/exports/表名.csv</code>，可用 Excel 直接打开。</li>
+      <li><b>导出 JSON：</b>点击"📥 导出 JSON"，文件保存到 <code>server/exports/表名.json</code>。</li>
+    </ul>
+
+    <h4>五、撤销与重做</h4>
+    <p>每次增删改操作都会自动记录在历史栈中（最多 <span class="highlight">50 步</span>）：</p>
+    <ul>
+      <li><b>撤销 (Undo)：</b>回退到上一步操作前的状态。</li>
+      <li><b>重做 (Redo)：</b>恢复被撤销的操作。</li>
+    </ul>
+    <p>撤销后如执行新操作，重做栈将被清空。</p>
+
+    <h4>六、删除数据表</h4>
+    <p>选中表后，左侧底部出现"🗑 删除当前表"按钮。删除整表会同时删除表中所有数据，但<b>可通过撤销恢复</b>。</p>
+
+    <div class="note">
+      <b>💡 提示：</b>项目底层使用 MySQL 8.0 持久化存储，数据安全可靠。如遇连接问题，请检查 MySQL 服务是否启动。
+    </div>
+
+    <div class="modal-buttons">
+      <button class="btn-confirm" id="btnGuideClose">我知道了</button>
+    </div>
+  </div>
+</div>
+
+<!-- 操作历史弹窗 -->
+<div class="modal-overlay" id="historyOverlay">
+  <div class="modal history-modal" id="historyModal">
+    <h3>📜 操作历史详情</h3>
+    <div id="historyContent">
+      <div class="history-empty">加载中...</div>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn-confirm" id="btnHistoryClose">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== 工具函数 ====================
+function showToast(msg, type) {
+  type = type || "success";
+  var t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast " + type + " show";
+  setTimeout(function(){ t.classList.remove("show"); }, 2500);
+}
+
+function api(url, options) {
+  options = options || {};
+  var headers = options.headers || {};
+  headers["Content-Type"] = "application/json";
+  return fetch("/api" + url, {
+    method: options.method || "GET",
+    headers: headers,
+    body: options.body
+  }).then(function(res) { return res.json(); })
+  .catch(function(e) {
+    showToast("网络错误: " + e.message, "error");
+    return { ok: false, error: e.message };
+  });
+}
+
+function escapeHtml(str) {
+  var div = document.createElement("div");
+  div.textContent = String(str);
+  return div.innerHTML;
+}
+
+// ==================== 全局状态 ====================
+var currentTable = null;
+var currentColumns = [];
+var editMode = false;
+var editPkValue = null;
+var allRowsData = [];  // 缓存当前所有行数据
+
+// ==================== 表管理 ====================
+function loadTables() {
+  api("/tables").then(function(data) {
+    var list = document.getElementById("tableList");
+    if (!data.tables || data.tables.length === 0) {
+      list.innerHTML = '<li style="color:#bbb">暂无表，请创建</li>';
+      document.getElementById("btnDropTable").style.display = "none";
+      return;
+    }
+    var html = "";
+    for (var i = 0; i < data.tables.length; i++) {
+      var name = data.tables[i];
+      var cls = (currentTable === name) ? " active" : "";
+      html += '<li class="' + cls + '" data-table="' + escapeHtml(name) + '">📄 ' + escapeHtml(name) + ' <span class="badge" id="badge-' + escapeHtml(name) + '">...</span></li>';
+    }
+    list.innerHTML = html;
+    document.getElementById("btnDropTable").style.display = "block";
+    // 绑定点击事件
+    var items = list.querySelectorAll("li[data-table]");
+    for (var j = 0; j < items.length; j++) {
+      items[j].addEventListener("click", function() {
+        selectTable(this.getAttribute("data-table"));
+      });
+    }
+    // 加载行数
+    for (var k = 0; k < data.tables.length; k++) {
+      (function(tname) {
+        api("/tables/" + tname + "/schema").then(function(d) {
+          var badge = document.getElementById("badge-" + tname);
+          if (badge) badge.textContent = d.row_count || 0;
+        });
+      })(data.tables[k]);
+    }
+  });
+}
+
+function createTable() {
+  var name = document.getElementById("newTableName").value.trim();
+  var colsRaw = document.getElementById("newTableCols").value.trim();
+  if (!name || !colsRaw) { showToast("请填写表名和列名", "error"); return; }
+  var columns = colsRaw.split(",").map(function(s) { return s.trim(); }).filter(Boolean);
+  if (columns.length === 0) { showToast("至少需要一列", "error"); return; }
+  api("/tables", {
+    method: "POST",
+    body: JSON.stringify({ name: name, columns: columns })
+  }).then(function(res) {
+    if (res.ok) {
+      showToast(res.message);
+      document.getElementById("newTableName").value = "";
+      document.getElementById("newTableCols").value = "";
+      loadTables();
+      selectTable(name);
+    } else {
+      showToast(res.error, "error");
+    }
+  });
+}
+
+function dropTable() {
+  if (!currentTable) return;
+  if (!confirm('确定要删除表 "' + currentTable + '" 吗？此操作可撤销。')) return;
+  api("/tables/" + currentTable, { method: "DELETE" }).then(function(res) {
+    if (res.ok) {
+      showToast(res.message);
+      currentTable = null;
+      currentColumns = [];
+      allRowsData = [];
+      document.getElementById("contentArea").innerHTML = '<div class="placeholder">👈 请先在左侧选择或创建一个数据表</div>';
+      document.getElementById("statusRows").textContent = "未选择表";
+      document.getElementById("btnDropTable").style.display = "none";
+      loadTables();
+      refreshHistory();
+    } else {
+      showToast(res.error, "error");
+    }
+  });
+}
+
+function selectTable(name) {
+  currentTable = name;
+  api("/tables/" + name + "/schema").then(function(data) {
+    currentColumns = data.columns || [];
+    loadTables();
+    loadRows();
+  });
+  document.getElementById("btnDropTable").style.display = "block";
+}
+
+// ==================== 数据加载与渲染 ====================
+function loadRows(searchKey, searchVal) {
+  searchKey = searchKey || "";
+  searchVal = searchVal || "";
+  if (!currentTable) return;
+  var url = "/tables/" + currentTable + "/rows";
+  if (searchKey && searchVal) {
+    url += "?" + encodeURIComponent(searchKey) + "=" + encodeURIComponent(searchVal);
+  }
+  api(url).then(function(data) {
+    allRowsData = data.rows || [];
+    var area = document.getElementById("contentArea");
+    document.getElementById("statusRows").textContent = "当前表: " + currentTable + " | 记录数: " + (data.count || 0);
+    renderContent(area, searchKey, searchVal);
+  });
+}
+
+function renderContent(area, searchKey, searchVal) {
+  searchKey = searchKey || "";
+  searchVal = searchVal || "";
+  var html = '<div class="toolbar">';
+  // 数据操作组
+  html += '<div class="toolbar-group">';
+  html += '<button class="btn-add" id="btnAdd">＋ 新增记录</button>';
+  html += '<button class="btn-refresh" id="btnRefresh">🔄 刷新</button>';
+  html += '</div>';
+  html += '<div class="toolbar-divider"></div>';
+  // 搜索组
+  html += '<div class="toolbar-group">';
+  html += '<input class="search-input" id="searchKey" placeholder="列名" value="' + escapeHtml(searchKey) + '" />';
+  html += '<input class="search-input" id="searchVal" placeholder="搜索值" value="' + escapeHtml(searchVal) + '" />';
+  html += '<button class="btn-search" id="btnSearch">🔍 搜索</button>';
+  html += '<button class="btn-clear" id="btnClear">✕ 清除</button>';
+  html += '</div>';
+  html += '<div class="toolbar-divider"></div>';
+  // 导出组
+  html += '<div class="toolbar-group">';
+  html += '<button class="btn-export-csv" id="btnExportCsv">📥 导出 CSV</button>';
+  html += '<button class="btn-export-json" id="btnExportJson">📥 导出 JSON</button>';
+  html += '</div>';
+  html += '</div>';
+
+  if (!allRowsData || allRowsData.length === 0) {
+    html += '<div class="empty-state"><span class="icon">📭</span><span>暂无数据，点击上方按钮新增记录</span></div>';
+    area.innerHTML = html;
+    bindToolbarEvents();
+    return;
+  }
+
+  html += '<div class="table-wrapper"><table><thead><tr>';
+  for (var i = 0; i < currentColumns.length; i++) {
+    html += '<th>' + escapeHtml(currentColumns[i]) + '</th>';
+  }
+  html += '<th>操作</th></tr></thead><tbody id="tableBody">';
+
+  for (var r = 0; r < allRowsData.length; r++) {
+    var row = allRowsData[r];
+    var pk = String(row[currentColumns[0]] || "");
+    html += '<tr>';
+    for (var c = 0; c < currentColumns.length; c++) {
+      html += '<td>' + escapeHtml(String(row[currentColumns[c]] || "")) + '</td>';
+    }
+    html += '<td class="action-cell">';
+    html += '<button class="btn-edit" data-pk="' + escapeHtml(pk) + '">编辑</button>';
+    html += '<button class="btn-del" data-pk="' + escapeHtml(pk) + '">删除</button>';
+    html += '</td></tr>';
+  }
+
+  html += '</tbody></table></div>';
+  area.innerHTML = html;
+  bindToolbarEvents();
+  bindTableEvents();
+}
+
+function bindToolbarEvents() {
+  var btnAdd = document.getElementById("btnAdd");
+  var btnRefresh = document.getElementById("btnRefresh");
+  var btnSearch = document.getElementById("btnSearch");
+  var btnClear = document.getElementById("btnClear");
+  var btnExportCsv = document.getElementById("btnExportCsv");
+  var btnExportJson = document.getElementById("btnExportJson");
+
+  if (btnAdd) btnAdd.addEventListener("click", openAddModal);
+  if (btnRefresh) btnRefresh.addEventListener("click", function() { loadRows(); });
+  if (btnSearch) btnSearch.addEventListener("click", doSearch);
+  if (btnClear) btnClear.addEventListener("click", function() { loadRows(); });
+  if (btnExportCsv) btnExportCsv.addEventListener("click", function() { doExport("csv"); });
+  if (btnExportJson) btnExportJson.addEventListener("click", function() { doExport("json"); });
+}
+
+function bindTableEvents() {
+  var tbody = document.getElementById("tableBody");
+  if (!tbody) return;
+  tbody.addEventListener("click", function(e) {
+    var btn = e.target.closest("button");
+    if (!btn) return;
+    var pk = btn.getAttribute("data-pk");
+    if (!pk) return;
+    if (btn.classList.contains("btn-edit")) {
+      openEditModalByPk(pk);
+    } else if (btn.classList.contains("btn-del")) {
+      deleteRowByPk(pk);
+    }
+  });
+}
+
+function doSearch() {
+  var key = document.getElementById("searchKey");
+  var val = document.getElementById("searchVal");
+  loadRows(key ? key.value.trim() : "", val ? val.value.trim() : "");
+}
+
+// ==================== CRUD 操作 ====================
+function openAddModal() {
+  editMode = false;
+  editPkValue = null;
+  document.getElementById("modalTitle").textContent = "新增记录";
+  var fields = document.getElementById("modalFields");
+  var html = "";
+  for (var i = 0; i < currentColumns.length; i++) {
+    var c = currentColumns[i];
+    var isPk = (i === 0);
+    html += '<div class="form-group"><label>' + escapeHtml(c) + (isPk ? "(主键)" : "") + '</label>';
+    html += '<input id="field-' + i + '" placeholder="请输入' + escapeHtml(c) + '" /></div>';
+  }
+  fields.innerHTML = html;
+  document.getElementById("modalOverlay").classList.add("show");
+}
+
+function openEditModalByPk(pkValue) {
+  editMode = true;
+  editPkValue = pkValue;
+  document.getElementById("modalTitle").textContent = "编辑记录";
+  // 从 allRowsData 中找数据
+  var rowData = null;
+  for (var i = 0; i < allRowsData.length; i++) {
+    if (String(allRowsData[i][currentColumns[0]]) === pkValue) {
+      rowData = allRowsData[i];
+      break;
+    }
+  }
+  var fields = document.getElementById("modalFields");
+  var html = "";
+  for (var j = 0; j < currentColumns.length; j++) {
+    var c = currentColumns[j];
+    var isPk = (j === 0);
+    var val = escapeHtml(String((rowData && rowData[c]) ? rowData[c] : ""));
+    html += '<div class="form-group"><label>' + escapeHtml(c) + (isPk ? "(主键-不可修改)" : "") + '</label>';
+    html += '<input id="field-' + j + '" value="' + val + '" ' + (isPk ? "readonly" : "") + ' placeholder="请输入' + escapeHtml(c) + '" /></div>';
+  }
+  fields.innerHTML = html;
+  document.getElementById("modalOverlay").classList.add("show");
+}
+
+function closeModal() {
+  document.getElementById("modalOverlay").classList.remove("show");
+}
+
+function submitForm() {
+  var row = {};
+  for (var i = 0; i < currentColumns.length; i++) {
+    var el = document.getElementById("field-" + i);
+    if (!el) continue;
+    row[currentColumns[i]] = el.value.trim();
+  }
+  var pk = currentColumns[0];
+  if (!row[pk]) { showToast('主键 "' + pk + '" 不能为空', "error"); return; }
+
+  if (editMode) {
+    api("/tables/" + currentTable + "/rows/" + encodeURIComponent(editPkValue), {
+      method: "PUT",
+      body: JSON.stringify(row)
+    }).then(function(res) {
+      if (res.ok) { showToast("更新成功"); closeModal(); loadRows(); refreshHistory(); }
+      else { showToast(res.error, "error"); }
+    });
+  } else {
+    api("/tables/" + currentTable + "/rows", {
+      method: "POST",
+      body: JSON.stringify(row)
+    }).then(function(res) {
+      if (res.ok) { showToast("新增成功"); closeModal(); loadRows(); refreshHistory(); }
+      else { showToast(res.error, "error"); }
+    });
+  }
+}
+
+function deleteRowByPk(pkValue) {
+  console.log("deleteRowByPk called, pk=" + pkValue + ", table=" + currentTable);
+  if (!confirm('确定删除主键为 "' + pkValue + '" 的记录吗？')) return;
+  var url = "/tables/" + currentTable + "/rows/" + encodeURIComponent(pkValue);
+  console.log("DELETE " + url);
+  api(url, { method: "DELETE" }).then(function(res) {
+    console.log("DELETE response:", res);
+    if (res.ok) {
+      showToast("删除成功");
+      loadRows();
+      refreshHistory();
+    } else {
+      showToast(res.error, "error");
+    }
+  });
+}
+
+// ==================== 导出 ====================
+function doExport(format) {
+  if (!currentTable) return;
+  api("/tables/" + currentTable + "/export/" + format, { method: "POST" }).then(function(res) {
+    if (res.ok) {
+      showToast("已导出 " + res.count + " 条记录 (" + format.toUpperCase() + ")");
+    } else {
+      showToast(res.error, "error");
+    }
+  });
+}
+
+// ==================== 历史回溯 ====================
+function refreshHistory() {
+  api("/history").then(function(data) {
+    document.getElementById("undoCount").textContent = data.undo_count || 0;
+    document.getElementById("btnUndo").disabled = !data.can_undo;
+    document.getElementById("btnRedo").disabled = !data.can_redo;
+  });
+}
+
+function doUndo() {
+  api("/history/undo", { method: "POST" }).then(function(res) {
+    if (res.ok) {
+      showToast("已撤销", "info");
+      loadTables();
+      if (currentTable) loadRows();
+      refreshHistory();
+    } else { showToast("无法撤销", "error"); }
+  });
+}
+
+function doRedo() {
+  api("/history/redo", { method: "POST" }).then(function(res) {
+    if (res.ok) {
+      showToast("已重做", "info");
+      loadTables();
+      if (currentTable) loadRows();
+      refreshHistory();
+    } else { showToast("无法重做", "error"); }
+  });
+}
+
+// ==================== 使用指南弹窗 ====================
+function openGuide() {
+  document.getElementById("guideOverlay").classList.add("show");
+}
+function closeGuide() {
+  document.getElementById("guideOverlay").classList.remove("show");
+}
+
+// ==================== 操作历史弹窗 ====================
+var historyModalData = null;
+
+function openHistoryLog() {
+  api("/history").then(function(data) {
+    historyModalData = data;
+    renderHistoryModal(data);
+    document.getElementById("historyOverlay").classList.add("show");
+  });
+}
+
+function closeHistoryLog() {
+  document.getElementById("historyOverlay").classList.remove("show");
+}
+
+var typeLabels = {
+  "create": "建表", "drop": "删表", "insert": "插入",
+  "delete": "删除", "update": "更新", "restore": "恢复", "other": "其他"
+};
+
+function renderHistoryModal(data) {
+  var container = document.getElementById("historyContent");
+  var undoList = data.undo_list || [];
+  var redoList = data.redo_list || [];
+
+  var html = "";
+
+  // 可撤销操作（undo 栈）
+  html += '<div class="history-section">';
+  html += '<h4>🔙 可撤销操作（共 ' + undoList.length + ' 步）</h4>';
+  if (undoList.length === 0) {
+    html += '<div class="history-empty">暂无操作记录</div>';
+  } else {
+    html += '<ul class="history-list">';
+    for (var i = 0; i < undoList.length; i++) {
+      var item = undoList[i];
+      var t = item.type;
+      html += '<li>';
+      html += '<span class="history-step ' + t + '">' + item.index + '</span>';
+      html += '<span class="history-desc">' + escapeHtml(item.description) + '</span>';
+      html += '<span class="history-type ' + t + '">' + (typeLabels[t] || t) + '</span>';
+      html += '</li>';
+    }
+    html += '</ul>';
+  }
+  html += '</div>';
+
+  // 可重做操作（redo 栈）
+  html += '<div class="history-section">';
+  html += '<h4>🔜 可重做操作（共 ' + redoList.length + ' 步）</h4>';
+  if (redoList.length === 0) {
+    html += '<div class="history-empty">暂无已撤销的操作</div>';
+  } else {
+    html += '<ul class="history-list">';
+    for (var j = 0; j < redoList.length; j++) {
+      var ritem = redoList[j];
+      var rt = ritem.type;
+      html += '<li>';
+      html += '<span class="history-step ' + rt + '">' + ritem.index + '</span>';
+      html += '<span class="history-desc">' + escapeHtml(ritem.description) + '</span>';
+      html += '<span class="history-type ' + rt + '">' + (typeLabels[rt] || rt) + '</span>';
+      html += '</li>';
+    }
+    html += '</ul>';
+  }
+  html += '</div>';
+
+  // 提示
+  html += '<div style="background:#f0f7ff; border-left:3px solid #4285f4; padding:8px 12px; border-radius:0 6px 6px 0; font-size:12px; color:#555; margin-top:4px;">';
+  html += '💡 <b>撤销</b>会回退到该步之前的状态；<b>重做</b>可恢复被撤销的操作。撤销后执行新操作将清空重做栈。';
+  html += '</div>';
+
+  container.innerHTML = html;
+}
+
+// ==================== 初始化事件绑定 ====================
+(function init() {
+  // 使用指南按钮
+  document.getElementById("btnGuide").addEventListener("click", openGuide);
+  document.getElementById("btnGuideClose").addEventListener("click", closeGuide);
+  document.getElementById("guideOverlay").addEventListener("click", function(e) {
+    if (e.target === this) closeGuide();
+  });
+  // 操作历史按钮
+  document.getElementById("btnHistoryLog").addEventListener("click", openHistoryLog);
+  document.getElementById("btnHistoryClose").addEventListener("click", closeHistoryLog);
+  document.getElementById("historyOverlay").addEventListener("click", function(e) {
+    if (e.target === this) closeHistoryLog();
+  });
+  // 顶栏按钮
+  document.getElementById("btnUndo").addEventListener("click", doUndo);
+  document.getElementById("btnRedo").addEventListener("click", doRedo);
+  // 创建表按钮
+  document.getElementById("btnCreateTable").addEventListener("click", createTable);
+  // 删除表按钮
+  document.getElementById("btnDropTable").addEventListener("click", dropTable);
+  // 模态框按钮
+  document.getElementById("btnCancel").addEventListener("click", closeModal);
+  document.getElementById("btnConfirm").addEventListener("click", submitForm);
+  // 点击遮罩关闭
+  document.getElementById("modalOverlay").addEventListener("click", function(e) {
+    if (e.target === this) closeModal();
+  });
+
+  // 加载数据
+  loadTables();
+  refreshHistory();
+  api("/tables").then(function(data) {
+    if (data.tables && data.tables.length > 0) {
+      selectTable(data.tables[0]);
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

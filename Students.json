@@ -1,0 +1,23 @@
+{
+  "name": "Students",
+  "columns": [
+    "StuNumber",
+    "Name",
+    "Age",
+    "Major"
+  ],
+  "rows": [
+    {
+      "StuNumber": "20241906.01",
+      "Name": "Yoton",
+      "Age": "19",
+      "Major": "Computer Science"
+    },
+    {
+      "StuNumber": "20241906.02",
+      "Name": "Yaton",
+      "Age": "20",
+      "Major": "Math"
+    }
+  ]
+}
